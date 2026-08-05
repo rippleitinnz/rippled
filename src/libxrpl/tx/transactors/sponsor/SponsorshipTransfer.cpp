@@ -304,12 +304,6 @@ SponsorshipTransfer::doApply()
     if (!sponseeSle)
         return tefINTERNAL;  // LCOV_EXCL_LINE
 
-    auto const balanceBeforeFee = [&](SLE::const_ref sle) -> XRPAmount {
-        if (sle->getAccountID(sfAccount) == accountID_)
-            return preFeeBalance_;
-        return sle->getFieldAmount(sfBalance).xrp();
-    };
-
     bool const isCreate = ctx_.tx.isFlag(tfSponsorshipCreate);
     bool const isReassign = ctx_.tx.isFlag(tfSponsorshipReassign);
 
@@ -497,17 +491,9 @@ SponsorshipTransfer::doApply()
             if (!oldSponsorSle)
                 return tefINTERNAL;  // LCOV_EXCL_LINE
 
-            // The sponsee must be able to hold its own account reserve after
-            // the sponsorship is removed.
-            if (auto const ter = checkReserve(
-                    ctx_.getApplyViewContext(),
-                    sponseeSle,
-                    balanceBeforeFee(sponseeSle),
-                    SLE::pointer(),
-                    {.accountCountDelta = 1},
-                    ctx_.journal);
-                !isTesSuccess(ter))
-                return ter;
+            // The sponsee reclaims its own account reserve burden. We do not check
+            // the sponsee's reserve here (via `checkReserve`) so that a sponsor can
+            // always end a sponsorship, even if the sponsee lacks sufficient reserve.
 
             sponseeSle->makeFieldAbsent(sfSponsor);
             view().update(sponseeSle);

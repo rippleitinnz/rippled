@@ -1293,15 +1293,15 @@ public:
             env.close();
 
             // dissolve sponsors
+            // The sponsee's reserve is not checked when ending sponsorship, so the
+            // sponsorship can be ended even though alice cannot cover its own
+            // account reserve.
             adjustAccountXRPBalance(env, alice, accountReserve(env, 1) - drops(1));
-
-            env(sponsor::transfer(alice, tfSponsorshipEnd), Ter(tecINSUFFICIENT_RESERVE));
-            env.close();
-
-            adjustAccountXRPBalance(env, alice, accountReserve(env, 1));
 
             env(sponsor::transfer(alice, tfSponsorshipEnd));
             env.close();
+
+            BEAST_EXPECT(env.balance(alice) < accountReserve(env, 1));
 
             BEAST_EXPECT(sponsoredOwnerCount(env, alice) == 0);
             BEAST_EXPECT(sponsoredOwnerCount(env, sponsor1) == 0);
@@ -1353,11 +1353,16 @@ public:
             BEAST_EXPECT(env.le(alice)->getAccountID(sfSponsor) == sponsor.id());
             BEAST_EXPECT(sponsoringAccountCount(env, sponsor) == 1);
 
+            // The sponsee's reserve is not checked, so a sponsor can always end
+            // the sponsorship even if the sponsee is below its account reserve.
+            adjustAccountXRPBalance(env, alice, accountReserve(env, 1) - drops(1));
+
             env(sponsor::transfer(sponsor, tfSponsorshipEnd), sponsor::SponseeAcc(alice));
             env.close();
 
             BEAST_EXPECT(!env.le(alice)->isFieldPresent(sfSponsor));
             BEAST_EXPECT(sponsoringAccountCount(env, sponsor) == 0);
+            BEAST_EXPECT(env.balance(alice) < accountReserve(env, 1));
         }
 
         {
