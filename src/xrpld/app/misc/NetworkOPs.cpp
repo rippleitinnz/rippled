@@ -4631,10 +4631,14 @@ NetworkOPsImp::subServer(InfoSub::ref isrListener, json::Value& jvResult, bool a
     jvResult[jss::pubkey_node] =
         toBase58(TokenType::NodePublic, registry_.get().getApp().nodeIdentity().first);
 
-    std::scoped_lock const sl(streamLock_);
-    bool const added =
-        streamMaps_[SServer].emplace(isrListener->getSeq(), isrListener).second;
-    if (added && streamMaps_[SServer].size() == 1)
+    bool added;
+    bool isFirstSubscriber = false;
+    {
+        std::scoped_lock const sl(streamLock_);
+        added = streamMaps_[SServer].emplace(isrListener->getSeq(), isrListener).second;
+        isFirstSubscriber = added && streamMaps_[SServer].size() == 1;
+    }
+    if (isFirstSubscriber)
     {
         // First subscriber on an otherwise-quiet node: reset lastFeeSummary_
         // so the next reportFeeChange() tick publishes a full serverStatus
